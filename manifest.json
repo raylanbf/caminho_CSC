@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Caminho CSC",
+  "version": "1.0.0",
+  "description": "Descobre e guarda o link direto de cada serviço do CSC quando você abre um chamado.",
+  "permissions": ["storage"],
+  "action": {
+    "default_title": "Caminho CSC",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://csc.pucminas.br/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}

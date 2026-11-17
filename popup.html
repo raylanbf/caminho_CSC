@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Caminho CSC</title>
+  <style>
+    :root { --fundo: #ffffff; --texto: #111827; --suave: #6b7280; --borda: #e5e7eb; --azul: #2563eb; --cartao: #f9fafb; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fundo: #111827; --texto: #f3f4f6; --suave: #9ca3af; --borda: #374151; --azul: #60a5fa; --cartao: #1f2937; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; width: 460px; font: 13px/1.4 Segoe UI, Arial, sans-serif; background: var(--fundo); color: var(--texto); }
+    header { padding: 12px 14px 8px; border-bottom: 1px solid var(--borda); }
+    h1 { font-size: 15px; margin: 0 0 8px; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); margin: 12px 14px 6px; }
+    .listas { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px; }
+    .chip { border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); border-radius: 999px; padding: 4px 10px; cursor: pointer; font: inherit; }
+    .chip:hover { border-color: var(--azul); }
+    input[type=search] { width: 100%; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); font: inherit; }
+    #servicos { list-style: none; margin: 0; padding: 0 14px 8px; max-height: 360px; overflow-y: auto; }
+    .item { border: 1px solid var(--borda); background: var(--cartao); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+    .nome { font-weight: 600; word-break: break-word; }
+    .nome input { width: 100%; font: inherit; padding: 3px 5px; }
+    .meta { color: var(--suave); font-size: 11px; margin-top: 2px; word-break: break-word; }
+    .tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--borda); margin-right: 4px; }
+    .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+    .acoes button { font: inherit; font-size: 12px; border: 1px solid var(--borda); background: var(--fundo); color: var(--texto); border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+    .acoes button:hover { border-color: var(--azul); }
+    .acoes .principal { background: var(--azul); border-color: var(--azul); color: #fff; }
+    .acoes .perigo.confirmar { background: #dc2626; border-color: #dc2626; color: #fff; }
+    .vazio { color: var(--suave); padding: 6px 0 12px; }
+    footer { border-top: 1px solid var(--borda); padding: 8px 14px 12px; color: var(--suave); font-size: 11px; }
+    footer button { font: inherit; font-size: 12px; margin-bottom: 6px; border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); border-radius: 5px; padding: 4px 9px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔗 Caminho CSC</h1>
+    <input type="search" id="busca" placeholder="Buscar serviço, caminho ou ID...">
+  </header>
+
+  <h2>Listas de chamados</h2>
+  <div class="listas" id="listas"></div>
+
+  <h2>Serviços descobertos</h2>
+  <ul id="servicos"></ul>
+
+  <footer>
+    <button id="copiarTodos">Copiar todos os links</button><br>
+    Para descobrir um link novo: abra o formulário de um serviço no CSC (pela árvore ou pela busca).
+    Para criar um atalho na Área de Trabalho: clique em "Abrir" e arraste o cadeado da barra de endereço até a Área de Trabalho.
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
