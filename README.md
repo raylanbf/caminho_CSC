@@ -4,6 +4,9 @@ Extensão para Google Chrome que **descobre e guarda o link direto** de cada ser
 Com o link, você abre o formulário de um serviço com **um clique**, sem passar de novo por
 Chamados → Abertura → árvore → pasta → subpasta → serviço.
 
+Depois de **mapear o catálogo** (uma vez só), basta **digitar o nome ou o caminho** do serviço
+no ícone da extensão para receber o link.
+
 ---
 
 ## 1. Como instalar
@@ -39,17 +42,41 @@ Se você alterar algum arquivo da extensão, volte em `chrome://extensions` e cl
 
 Cada serviço só precisa ser descoberto **uma vez**.
 
+### Buscar qualquer serviço digitando (catálogo)
+
+Para não precisar abrir serviço por serviço, a extensão pode **mapear a árvore inteira** de uma vez:
+
+1. Entre no CSC.
+2. Clique no ícone da extensão → **Mapear como solicitante** (ou **Mapear como atendente**, se você abre chamados como atendente).
+3. Abre a tela da árvore e um painel 🗺️ no canto inferior direito mostra o progresso
+   (*"Abrindo pastas... 37 pastas, 212 serviços"*). Leva de 1 a 3 minutos. Não feche a aba nesse tempo.
+4. No fim aparece *"Pronto! N serviços salvos"*.
+
+Agora clique no ícone da extensão e **digite**. Pode ser:
+
+- uma parte do nome: `patentes`, `suporte docente`
+- o caminho, do jeito que aparece no CSC: `Serviços do Núcleo de Educação Digital (NED)/Atendimento de SUPORTE`
+- sem acento e em minúsculas, que também funciona: `nucleo educacao digital suporte`
+- o ID: `6548`
+
+A busca encontra o serviço se **todas as palavras** digitadas aparecerem no nome ou no caminho.
+
+O painel 🗺️ também aparece sozinho sempre que você estiver na tela da árvore. Use **Atualizar mapa** quando
+o CSC ganhar serviços novos.
+
 ### A janelinha da extensão (clique no ícone)
 
 | Parte | O que faz |
 |---|---|
-| **Buscar** | Filtra os serviços por nome, caminho ou ID. |
+| **Caixa de busca** | Vazia, mostra seus serviços salvos. Com texto, procura em todo o catálogo mapeado e nos salvos. |
 | **Listas de chamados** | Botões que abrem direto: Todos, Pendentes, Minha responsabilidade, Meus chamados. |
 | **Abrir** | Abre o formulário daquele serviço numa aba nova. |
 | **Copiar link** | Copia o link para a área de transferência. |
-| **Renomear** | Troca o nome que aparece na lista (Enter salva, Esc cancela). |
-| **Remover** | Tira o serviço da lista (pede um segundo clique para confirmar). |
-| **Copiar todos os links** | Copia uma lista em texto com todas as listas e serviços, boa para mandar para um colega. |
+| **☆ Salvar** | (resultados do catálogo) Põe o serviço na sua lista de salvos. |
+| **Renomear** | (salvos) Troca o nome que aparece na lista (Enter salva, Esc cancela). |
+| **Remover** | (salvos) Tira o serviço da lista (pede um segundo clique para confirmar). |
+| **Catálogo de serviços** | Mostra quantos serviços estão mapeados e tem os botões **Mapear como solicitante/atendente**. |
+| **Copiar todos os links salvos** | Copia uma lista em texto com as listas e os serviços salvos, boa para mandar para um colega. |
 
 As etiquetas de cada serviço mostram o **ID** e se o link é de **Solicitante** ou **Atendente** (veja a seção 3.3).
 
@@ -150,7 +177,29 @@ e o link abre a lista com esses filtros salvos.
 
 O link direto é de um **serviço** (um item da árvore). Cada serviço é atendido por um **grupo/fila**
 (ex.: `RES_NED/CEAD_Gestão_do_Ambiente_Virtual`). Para ter o link "da fila", descubra o link do serviço
-que cai nessa fila.
+que cai nessa fila. A árvore não informa o grupo, então **a busca não encontra pelo nome do grupo**,
+só pelo nome ou caminho do serviço.
+
+### 3.6 Como o mapeamento do catálogo funciona
+
+A árvore de serviços é um componente **RadTreeView** do Telerik. Na tela `IncidenteV2.aspx` ela já vem
+com as pastas principais, e cada pasta ainda fechada tem `expandMode: 2`, ou seja, "os filhos vêm do servidor
+quando abrir".
+
+O mapeamento faz o mesmo que você faria clicando, só que automático:
+
+1. O `mapa-main.js` roda **no mesmo ambiente da página** (`"world": "MAIN"` no `manifest.json`), porque só
+   assim ele enxerga os objetos do Telerik. Ele pega a árvore com `$find('ctl00_MainContent_rdTreeView')`.
+2. Ele percorre a árvore pasta por pasta. Para cada pasta fechada chama `no.expand()`, e o próprio site pede
+   os filhos ao servidor (a mesma requisição que acontece quando você clica).
+3. Ele espera o `expandMode` mudar de `2` para `0`, sinal de que os filhos chegaram, e faz uma pausa de 150 ms antes
+   da próxima pasta para não sobrecarregar o servidor. Se uma pasta não responder em 20 segundos, ele pula
+   e avisa no final.
+4. Cada item com valor `ID;S;...` (serviço final) é anotado com ID, nome e caminho das pastas.
+5. No fim ele fecha as pastas e manda a lista para o `mapa.js` (por `window.postMessage`), que salva o
+   catálogo no Chrome, separado por solicitante e atendente.
+
+O link de cada serviço do catálogo é montado com o mesmo formato da seção 3.2.
 
 ---
 
@@ -167,6 +216,11 @@ que cai nessa fila.
 - Aberto numa aba sozinha, o formulário pode ficar com o visual um pouco mais simples,
   porque foi feito para aparecer como janela interna. Mas funciona.
 - Se a EMX mudar o sistema (nome da página ou dos parâmetros), a descoberta pode parar de funcionar.
+- O mapeamento faz **uma requisição por pasta** da árvore (com pausa entre elas). Rode quando precisar,
+  não fique repetindo.
+- Os catálogos de **solicitante** e de **atendente** são diferentes, porque o CSC mostra árvores diferentes.
+  O link de atendente só funciona para quem tem acesso a abrir chamados como atendente.
+- O botão **Mapear como atendente** abre a tela de atendente da empresa `5` (PUC Minas), que foi a observada nas gravações.
 - A lista de serviços fica **só no seu navegador** (`chrome.storage.local`). A extensão não envia nada para
   nenhum servidor. Para passar para outra pessoa, use **Copiar todos os links**.
 
@@ -176,7 +230,9 @@ que cai nessa fila.
 |---|---|
 | `manifest.json` | "Ficha" da extensão: nome, permissões (`storage`) e em quais páginas ela roda. |
 | `content.js` | Roda dentro do CSC: detecta o formulário, lê o ID e o nome, salva o link e mostra a barrinha. |
-| `popup.html` / `popup.js` | A janelinha que abre ao clicar no ícone: lista, busca, abrir, copiar, renomear, remover. |
+| `mapa.js` | Mostra o painel 🗺️ na tela da árvore, mostra o progresso e salva o catálogo. |
+| `mapa-main.js` | Roda no ambiente da página e abre as pastas da árvore pelo Telerik para listar todos os serviços. |
+| `popup.html` / `popup.js` | A janelinha que abre ao clicar no ícone: busca, listas, abrir, copiar, salvar, renomear, remover, mapear. |
 
 ## 7. Como isso foi descoberto
 
@@ -185,4 +241,5 @@ as requisições escondidas (com respostas) e o HTML das páginas. Analisando es
 
 - as respostas da árvore, com o valor de cada item (`6548;S;S;S;...`);
 - a função `rdTreeview_DoubleClick` → `AbreTela`, que monta o endereço `viewIncidenteDireto.aspx?id=...`;
-- o script das listas que clica sozinho no `btnLoadGrid`.
+- o script das listas que clica sozinho no `btnLoadGrid`;
+- a configuração da árvore (`nodeData` com `expandMode: 2`), usada no mapeamento do catálogo.
