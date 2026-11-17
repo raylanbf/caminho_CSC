@@ -9,11 +9,8 @@ const LISTAS = [
   ['Meus chamados', 'UsuarioV2'],
 ];
 
-// Páginas da árvore de serviços (onde o mapeamento acontece).
-const PAGINA_ARVORE = {
-  Incidente: `${BASE}IncidenteV2.aspx?origem=Incidente#caminho-csc-mapear`,
-  ChamadosGrupo: `${BASE}IncidenteV2.aspx?origem=ChamadosGrupo&pEmpresaid=5#caminho-csc-mapear`,
-};
+// Tela da árvore de serviços (é navegando nela que a extensão aprende os serviços).
+const PAGINA_ARVORE = `${BASE}IncidenteV2.aspx?origem=Incidente`;
 
 // Serviços que já descobrimos analisando as gravações (entram na lista na 1ª vez).
 const SEMENTES = [
@@ -95,7 +92,8 @@ function criarBotao(texto, classe, aoClicar) {
 function juntar(servicos, catalogo) {
   const todos = new Map();
   for (const origem of Object.keys(catalogo)) {
-    for (const it of (catalogo[origem] && catalogo[origem].itens) || []) {
+    // itens pode ser lista (formato antigo) ou objeto por ID (formato novo)
+    for (const it of Object.values((catalogo[origem] && catalogo[origem].itens) || {})) {
       todos.set(`${it.id}|${origem}`, { id: it.id, origem, nome: it.nome, caminho: it.caminho || '', link: montarLink(it.id, origem), salvo: false });
     }
   }
@@ -183,9 +181,9 @@ async function desenhar() {
     const li = document.createElement('li');
     li.className = 'vazio';
     if (termos.length) {
-      li.textContent = Object.keys(catalogo).length
-        ? 'Nenhum serviço encontrado. Tente outras palavras (sem acento também funciona).'
-        : 'Nenhum serviço encontrado. Mapeie o catálogo (botões abaixo) para buscar qualquer serviço do CSC.';
+      li.textContent =
+        'Nenhum serviço encontrado. Tente outras palavras (sem acento também funciona). ' +
+        'Se ainda não achar, abra na árvore do CSC a pasta onde o serviço fica: a extensão aprende na hora.';
     } else {
       li.textContent = 'Nenhum serviço salvo ainda.';
     }
@@ -199,11 +197,10 @@ async function desenhar() {
 function desenharCatalogo(catalogo) {
   const partes = ['Incidente', 'ChamadosGrupo'].map((origem) => {
     const c = catalogo[origem];
-    const nome = nomeOrigem(origem);
-    if (!c || !c.itens || !c.itens.length) return `${nome}: não mapeado`;
-    return `${nome}: ${c.itens.length} serviços (${new Date(c.quando).toLocaleDateString('pt-BR')})`;
+    const total = c && c.itens ? Object.keys(c.itens).length : 0;
+    return `${nomeOrigem(origem)}: ${total} serviço${total === 1 ? '' : 's'}`;
   });
-  document.getElementById('statusCatalogo').textContent = partes.join(' · ');
+  document.getElementById('statusCatalogo').textContent = `Conhecidos até agora: ${partes.join(' · ')}`;
 }
 
 async function salvarDoCatalogo(chave, s) {
@@ -280,8 +277,7 @@ function desenharListas() {
 }
 
 document.getElementById('busca').addEventListener('input', desenhar);
-document.getElementById('mapearSolicitante').addEventListener('click', () => chrome.tabs.create({ url: PAGINA_ARVORE.Incidente }));
-document.getElementById('mapearAtendente').addEventListener('click', () => chrome.tabs.create({ url: PAGINA_ARVORE.ChamadosGrupo }));
+document.getElementById('abrirArvore').addEventListener('click', () => chrome.tabs.create({ url: PAGINA_ARVORE }));
 
 document.getElementById('copiarTodos').addEventListener('click', async (ev) => {
   const { servicos } = await lerTudo();
