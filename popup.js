@@ -38,13 +38,13 @@ function nomeOrigem(origem) {
   return origem;
 }
 
-// Deixa o texto "comparável": sem acento, minúsculo, e / > | - viram espaço.
+// Deixa o texto "comparável": sem acento, minúsculo, e / > | - _ viram espaço.
 function normalizar(texto) {
   return (texto || '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[\/>»|\\\-–—]+/g, ' ')
+    .replace(/[\/>»|\\\-–—_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -94,18 +94,27 @@ function juntar(servicos, catalogo) {
   for (const origem of Object.keys(catalogo)) {
     // itens pode ser lista (formato antigo) ou objeto por ID (formato novo)
     for (const it of Object.values((catalogo[origem] && catalogo[origem].itens) || {})) {
-      todos.set(`${it.id}|${origem}`, { id: it.id, origem, nome: it.nome, caminho: it.caminho || '', link: montarLink(it.id, origem), salvo: false });
+      todos.set(`${it.id}|${origem}`, {
+        id: it.id,
+        origem,
+        nome: it.nome,
+        caminho: it.caminho || '',
+        grupos: Array.isArray(it.grupos) ? it.grupos : [],
+        link: montarLink(it.id, origem),
+        salvo: false,
+      });
     }
   }
+  // O salvo manda no nome e no link; os grupos continuam vindo do catálogo.
   for (const [chave, s] of Object.entries(servicos)) {
-    todos.set(chave, { ...s, salvo: true });
+    todos.set(chave, { ...todos.get(chave), ...s, salvo: true });
   }
   return todos;
 }
 
 function pontuar(item, termos, consulta) {
   const nome = normalizar(item.nome);
-  const tudo = normalizar(`${item.nome} ${item.caminho} ${item.id}`);
+  const tudo = normalizar(`${item.nome} ${item.caminho} ${item.id} ${(item.grupos || []).join(' ')}`);
   if (!termos.every((t) => tudo.includes(t))) return -1;
   let pontos = termos.filter((t) => nome.includes(t)).length * 10;
   if (item.salvo) pontos += 5;
@@ -147,7 +156,14 @@ function desenharItem(ul, chave, s) {
     acoes.append(criarBotao('☆ Salvar', '', () => salvarDoCatalogo(chave, s)));
   }
 
-  li.append(nome, meta, acoes);
+  li.append(nome, meta);
+  if (s.grupos && s.grupos.length) {
+    const grupos = document.createElement('div');
+    grupos.className = 'meta';
+    grupos.textContent = `Grupos vistos nos chamados: ${s.grupos.join(' · ')}`;
+    li.append(grupos);
+  }
+  li.append(acoes);
   ul.appendChild(li);
 }
 
@@ -162,15 +178,16 @@ async function desenhar() {
   aviso.textContent = '';
   desenharCatalogo(catalogo);
 
+  const todos = [...juntar(servicos, catalogo).entries()];
   let lista;
   if (!termos.length) {
     document.getElementById('tituloServicos').textContent = 'Serviços salvos';
-    lista = Object.entries(servicos)
-      .map(([chave, s]) => [chave, { ...s, salvo: true }])
+    lista = todos
+      .filter(([, s]) => s.salvo)
       .sort(([, a], [, b]) => (b.ultimaVez || '').localeCompare(a.ultimaVez || ''));
   } else {
     document.getElementById('tituloServicos').textContent = 'Resultados da busca';
-    lista = [...juntar(servicos, catalogo).entries()]
+    lista = todos
       .map(([chave, s]) => [chave, s, pontuar(s, termos, consulta)])
       .filter(([, , p]) => p >= 0)
       .sort(([, a, pa], [, b, pb]) => pb - pa || a.nome.length - b.nome.length)

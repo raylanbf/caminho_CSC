@@ -3,8 +3,9 @@
 // A página já traz em campos escondidos o ID do serviço e o caminho dele:
 //   hidCatalogoServicosId = "4952"
 //   hidDesc               = "CSC - Central.../Serviços de TI/Rede Acadêmica/Acesso Canvas/Suporte ao Canvas"
-// Este script lê SÓ esses campos e põe o serviço no catálogo, para a busca da extensão
-// encontrar o link pelo caminho. Não lê o conteúdo do chamado (descrição, solicitante etc.)
+// e, na aba Histórico, a coluna "Grupo" com as filas por onde o chamado passou.
+// Este script lê SÓ isso e põe no catálogo, para a busca da extensão encontrar o link
+// pelo caminho ou pelo grupo. Não lê o conteúdo do chamado (descrição, solicitante etc.)
 // e não faz nenhuma requisição.
 (() => {
   if (!/\/chamados\/viewhistoricochamado\.aspx$/i.test(location.pathname)) return;
@@ -29,27 +30,71 @@
   const nome = partes.pop();
   const caminho = partes.join(' / ');
 
-  async function guardar() {
-    const { catalogo = {} } = await chrome.storage.local.get('catalogo');
+  // Texto comparável: sem acento, minúsculo, espaços simples.
+  const simples = (t) =>
+    String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-    // Se a árvore já ensinou este serviço (em qualquer origem), ela manda: não mexe.
-    // Se veio de um chamado antes, só atualiza quando o nome ou o caminho mudou.
+  // Grupos (filas) da coluna "Grupo" da aba Histórico. Só conta as linhas em que a coluna
+  // "Serviço" é este mesmo serviço: se o chamado foi reclassificado, as linhas antigas
+  // são de outro serviço.
+  function lerGrupos() {
+    const titulos = [...document.querySelectorAll('#gridHistorico th.rgHeader')].map((th) => simples(th.textContent));
+    const colGrupo = titulos.indexOf('grupo');
+    const colServico = titulos.indexOf('servico');
+    if (colGrupo < 0) return [];
+
+    const grupos = [];
+    for (const tr of document.querySelectorAll('#gridHistorico_ctl00 > tbody > tr')) {
+      const celulas = tr.children;
+      if (celulas.length <= Math.max(colGrupo, colServico)) continue; // linha "nenhum registro"
+      if (colServico >= 0 && simples(celulas[colServico].textContent) !== simples(descricao)) continue;
+      const grupo = celulas[colGrupo].textContent.replace(/\s+/g, ' ').trim();
+      if (grupo && !grupos.includes(grupo)) grupos.push(grupo);
+    }
+    return grupos;
+  }
+
+  async function guardar() {
+    const grupos = lerGrupos();
+    const { catalogo = {} } = await chrome.storage.local.get('catalogo');
+    let conhecido = false;
+    let mudou = false;
+
+    // Acrescenta os grupos que o item ainda não tinha.
+    const juntarGrupos = (it) => {
+      const antes = Array.isArray(it.grupos) ? it.grupos : [];
+      const novos = grupos.filter((g) => !antes.includes(g));
+      if (novos.length) it.grupos = [...antes, ...novos];
+      return novos.length > 0;
+    };
+
+    // O serviço já está no catálogo (em qualquer origem)?
+    // Nome e caminho: o que veio da árvore manda; o que veio de um chamado é atualizado.
+    // Grupos: sempre acrescenta os novos.
     for (const c of Object.values(catalogo)) {
       for (const it of Object.values((c && c.itens) || {})) {
         if (!it || String(it.id) !== id) continue;
-        if (it.fonte !== 'chamado') return;
-        if (it.nome === nome && it.caminho === caminho) return;
+        conhecido = true;
+        if (it.fonte === 'chamado' && (it.nome !== nome || it.caminho !== caminho)) {
+          it.nome = nome;
+          it.caminho = caminho;
+          mudou = true;
+        }
+        if (juntarGrupos(it)) mudou = true;
       }
     }
 
-    // itens pode ser lista (formato antigo) ou objeto por ID (formato novo).
-    const atual = catalogo[ORIGEM] || {};
-    const itens = {};
-    for (const it of Object.values(atual.itens || {})) if (it && it.id) itens[it.id] = it;
-    itens[id] = { id, nome, caminho, tipo: '', fonte: 'chamado' };
+    if (!conhecido) {
+      // itens pode ser lista (formato antigo) ou objeto por ID (formato novo).
+      const atual = catalogo[ORIGEM] || {};
+      const itens = {};
+      for (const it of Object.values(atual.itens || {})) if (it && it.id) itens[it.id] = it;
+      itens[id] = { id, nome, caminho, tipo: '', fonte: 'chamado', grupos };
+      catalogo[ORIGEM] = { atualizado: new Date().toISOString(), itens };
+      mudou = true;
+    }
 
-    catalogo[ORIGEM] = { atualizado: new Date().toISOString(), itens };
-    await chrome.storage.local.set({ catalogo });
+    if (mudou) await chrome.storage.local.set({ catalogo });
   }
 
   guardar().catch((e) => console.warn('[Caminho CSC] erro ao salvar serviço do chamado:', e));

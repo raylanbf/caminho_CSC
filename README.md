@@ -55,13 +55,16 @@ Clique no ícone da extensão e digite. Pode ser:
 - o cabeçalho de um chamado, copiado inteiro da tela:
   `Código 1028224 - Csc - central de serviços compartilhados/serviços de ti/rede acadêmica/acesso canvas/suporte ao canvas`
   (o "Código 1028224 -" do começo é ignorado, e o serviço com esse caminho exato vem em primeiro)
+- um grupo (fila): `RES_NED/CEAD_Gestão_do_Ambiente_Virtual`. Aparecem os serviços cujos chamados
+  **que você abriu** já passaram por esse grupo (seção 3.7)
 
-A busca encontra o serviço se **todas as palavras** digitadas aparecerem no nome ou no caminho.
+A busca encontra o serviço se **todas as palavras** digitadas aparecerem no nome, no caminho ou nos grupos.
 
 **De onde vêm os serviços da busca?** A extensão **aprende sozinha** enquanto você usa o CSC:
 
 - toda pasta que você abre na **árvore** tem os serviços anotados na hora;
-- todo **chamado** que você abre (pelas listas Pendentes, Todos, Meus chamados...) ensina o serviço daquele chamado.
+- todo **chamado** que você abre (pelas listas Pendentes, Todos, Meus chamados...) ensina o serviço daquele chamado
+  e os grupos por onde ele passou.
 
 Quanto mais você navega, mais serviços a busca conhece. Se um serviço não aparecer, abra na árvore
 a pasta onde ele fica (ou abra um chamado desse serviço) e busque de novo.
@@ -209,9 +212,16 @@ O cabeçalho mostra só o caminho em texto, mas a página traz em campos escondi
 Os outros campos batem com o resto do valor da árvore (`hidGrupoSolucionadorChamado` = grupo,
 `hidEmpresaid` = empresa), o que confirma que o ID é o do catálogo.
 
-O `chamado.js` lê **só esses três campos** e põe o serviço no catálogo de **solicitante**
-(o link usa `origem=Incidente`). Não lê o conteúdo do chamado (descrição, solicitante, anexos)
-e não faz requisição nenhuma. Se a árvore já tiver ensinado o mesmo serviço, o que veio da árvore é mantido.
+Na aba **Histórico**, cada linha tem as colunas **Serviço** e **Grupo**: o grupo (fila) que estava com o chamado
+naquele momento.
+
+O `chamado.js` lê **só esses três campos e a coluna Grupo** e põe o serviço no catálogo de **solicitante**
+(o link usa `origem=Incidente`). Do histórico, só conta as linhas cujo **Serviço** é o serviço atual do chamado
+(se o chamado foi reclassificado, as linhas antigas são de outro serviço). Não lê o conteúdo do chamado
+(descrição, solicitante, anexos) e não faz requisição nenhuma.
+
+Se a árvore já tiver ensinado o mesmo serviço, o nome e o caminho que vieram da árvore são mantidos
+e só os grupos são acrescentados.
 
 ### 3.6 E as listas de chamados (Todos, Pendentes...)?
 
@@ -231,10 +241,22 @@ e o link abre a lista com esses filtros salvos.
 
 ### 3.7 Serviço x grupo (fila)
 
-O link direto é de um **serviço** (um item da árvore). Cada serviço é atendido por um **grupo/fila**
-(ex.: `RES_NED/CEAD_Gestão_do_Ambiente_Virtual`). Para ter o link "da fila", pegue o link do serviço
-que cai nessa fila. A árvore não informa o grupo, então **a busca não encontra pelo nome do grupo**,
-só pelo nome ou caminho do serviço.
+O link direto é de um **serviço** (um item da árvore), não de um grupo. O grupo (fila) é quem atende,
+e o CSC escolhe sozinho para onde o chamado vai. Por isso, para um site, o que importa é o link do serviço.
+
+Grupo e serviço **não são a mesma coisa**: um grupo atende vários serviços, e um chamado pode ser
+transferido entre grupos. Exemplo real, o chamado 1028224 (serviço "Suporte ao Canvas") passou por três:
+
+1. `RES_TI_PUC_Lourdes` (onde caiu na abertura)
+2. `RES_NED/TED_Suporte_Canvas`
+3. `RES_NED/CEAD_Gestão_do_Ambiente_Virtual`
+
+A árvore não informa o grupo. A extensão anota os grupos que aparecem no **histórico dos chamados que você abre**
+e mostra no popup, em cada serviço, a linha **"Grupos vistos nos chamados"**. Buscar
+`RES_NED/CEAD_Gestão_do_Ambiente_Virtual` lista os serviços cujos chamados já passaram por esse grupo.
+
+Isso é um **registro do que você já viu**, não um mapa oficial: um serviço só aparece na busca por grupo
+depois que você abrir algum chamado dele que tenha passado por esse grupo.
 
 ### 3.8 Perguntas que podem fazer
 
@@ -266,7 +288,7 @@ numa atualização do sistema. Aí é preciso descobrir o novo formato e atualiz
 Ela também ignora, de propósito:
 
 - o **"Novo chamado" genérico** (`id=0`), que não tem serviço escolhido;
-- o **conteúdo dos chamados já existentes**: deles só lê o ID e o caminho do serviço (seção 3.5);
+- o **conteúdo dos chamados já existentes**: deles só lê o ID e o caminho do serviço e a coluna Grupo do histórico (seção 3.5);
 - qualquer outra página do CSC.
 
 ## 5. Limitações
@@ -292,7 +314,7 @@ Ela também ignora, de propósito:
 | `content.js` | No formulário de um serviço: lê o ID e o nome, salva o link e mostra a barrinha. |
 | `arvore-main.js` | No ambiente da página: lê os serviços já carregados na árvore e detecta o botão direito em um serviço. |
 | `arvore.js` | Junta os serviços no catálogo do Chrome e mostra o menu do botão direito. |
-| `chamado.js` | Num chamado já existente: lê o ID e o caminho do serviço (campos escondidos) e põe no catálogo. |
+| `chamado.js` | Num chamado já existente: lê o ID e o caminho do serviço (campos escondidos) e os grupos do histórico, e põe no catálogo. |
 | `popup.html` / `popup.js` | A janelinha que abre ao clicar no ícone: busca, listas, abrir, copiar, salvar, renomear, remover. |
 
 ## 7. Como isso foi descoberto
@@ -305,4 +327,4 @@ as requisições escondidas (com respostas) e o HTML das páginas. Analisando es
 - o script das listas que clica sozinho no `btnLoadGrid`;
 - a configuração da árvore (`nodeData`), que mostra quais pastas já vêm carregadas;
 - na tela de um chamado existente, os campos escondidos `hidCatalogoServicosId` e `hidDesc`,
-  com o ID e o caminho do serviço.
+  com o ID e o caminho do serviço, e a coluna Grupo da aba Histórico.

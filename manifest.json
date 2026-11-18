@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Caminho CSC",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Guarda o link direto de cada serviço do CSC enquanto você navega. Digite o nome ou o caminho do serviço e receba o link.",
   "permissions": ["storage"],
   "action": {

@@ -31,6 +31,7 @@
       const novo = { id: String(it.id), nome: String(it.nome || ''), caminho: String(it.caminho || ''), tipo: String(it.tipo || '') };
       const antes = atual.itens[novo.id];
       if (!antes || antes.nome !== novo.nome || antes.caminho !== novo.caminho) {
+        if (antes && antes.grupos) novo.grupos = antes.grupos; // grupos vistos nos chamados
         atual.itens[novo.id] = novo;
         mudou = true;
       }
