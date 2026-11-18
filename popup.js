@@ -38,13 +38,13 @@ function nomeOrigem(origem) {
   return origem;
 }
 
-// Deixa o texto "comparável": sem acento, minúsculo, e / > | viram espaço.
+// Deixa o texto "comparável": sem acento, minúsculo, e / > | - viram espaço.
 function normalizar(texto) {
   return (texto || '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[\/>»|\\]+/g, ' ')
+    .replace(/[\/>»|\\\-–—]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -103,12 +103,14 @@ function juntar(servicos, catalogo) {
   return todos;
 }
 
-function pontuar(item, termos) {
+function pontuar(item, termos, consulta) {
   const nome = normalizar(item.nome);
   const tudo = normalizar(`${item.nome} ${item.caminho} ${item.id}`);
   if (!termos.every((t) => tudo.includes(t))) return -1;
   let pontos = termos.filter((t) => nome.includes(t)).length * 10;
   if (item.salvo) pontos += 5;
+  // Caminho colado inteiro (ex.: o do cabeçalho do chamado) vai para o topo.
+  if (normalizar(`${item.caminho} ${item.nome}`) === consulta) pontos += 1000;
   return pontos;
 }
 
@@ -151,7 +153,9 @@ function desenharItem(ul, chave, s) {
 
 async function desenhar() {
   const { servicos, catalogo } = await lerTudo();
-  const termos = normalizar(document.getElementById('busca').value).split(' ').filter(Boolean);
+  // Aceita o cabeçalho do chamado colado inteiro: "Código 1028224 - Csc - central de .../suporte ao canvas".
+  const consulta = normalizar(document.getElementById('busca').value).replace(/^codigo \d+ /, '');
+  const termos = consulta.split(' ').filter(Boolean);
   const ul = document.getElementById('servicos');
   const aviso = document.getElementById('aviso');
   ul.innerHTML = '';
@@ -167,7 +171,7 @@ async function desenhar() {
   } else {
     document.getElementById('tituloServicos').textContent = 'Resultados da busca';
     lista = [...juntar(servicos, catalogo).entries()]
-      .map(([chave, s]) => [chave, s, pontuar(s, termos)])
+      .map(([chave, s]) => [chave, s, pontuar(s, termos, consulta)])
       .filter(([, , p]) => p >= 0)
       .sort(([, a, pa], [, b, pb]) => pb - pa || a.nome.length - b.nome.length)
       .map(([chave, s]) => [chave, s]);
@@ -183,7 +187,8 @@ async function desenhar() {
     if (termos.length) {
       li.textContent =
         'Nenhum serviço encontrado. Tente outras palavras (sem acento também funciona). ' +
-        'Se ainda não achar, abra na árvore do CSC a pasta onde o serviço fica: a extensão aprende na hora.';
+        'Se ainda não achar, abra na árvore do CSC a pasta onde o serviço fica, ou abra um chamado ' +
+        'desse serviço: a extensão aprende na hora.';
     } else {
       li.textContent = 'Nenhum serviço salvo ainda.';
     }

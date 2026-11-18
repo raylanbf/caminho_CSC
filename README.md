@@ -6,6 +6,8 @@ Chamados → Abertura → árvore → pasta → subpasta → serviço.
 
 - **Botão direito** em um serviço da árvore → **Copiar link do serviço**.
 - **Digite o nome ou o caminho** do serviço no ícone da extensão para receber o link.
+- **Cole o cabeçalho de um chamado** (`Código 1028224 - Csc - central de .../suporte ao canvas`) na busca
+  para achar o link de abertura daquele serviço.
 - **Não pesa no servidor:** a extensão só lê o que já está na sua tela e não faz nenhuma requisição a mais.
 
 ---
@@ -50,13 +52,19 @@ Clique no ícone da extensão e digite. Pode ser:
 - o caminho, do jeito que aparece no CSC: `Serviços do Núcleo de Educação Digital (NED)/Atendimento de SUPORTE`
 - sem acento e em minúsculas, que também funciona: `nucleo educacao digital suporte`
 - o ID: `6548`
+- o cabeçalho de um chamado, copiado inteiro da tela:
+  `Código 1028224 - Csc - central de serviços compartilhados/serviços de ti/rede acadêmica/acesso canvas/suporte ao canvas`
+  (o "Código 1028224 -" do começo é ignorado, e o serviço com esse caminho exato vem em primeiro)
 
 A busca encontra o serviço se **todas as palavras** digitadas aparecerem no nome ou no caminho.
 
 **De onde vêm os serviços da busca?** A extensão **aprende sozinha** enquanto você usa o CSC:
-toda pasta que você abre na árvore tem os serviços anotados na hora. Quanto mais você navega,
-mais serviços a busca conhece. Se um serviço não aparecer, abra na árvore a pasta onde ele fica
-e busque de novo.
+
+- toda pasta que você abre na **árvore** tem os serviços anotados na hora;
+- todo **chamado** que você abre (pelas listas Pendentes, Todos, Meus chamados...) ensina o serviço daquele chamado.
+
+Quanto mais você navega, mais serviços a busca conhece. Se um serviço não aparecer, abra na árvore
+a pasta onde ele fica (ou abra um chamado desse serviço) e busque de novo.
 
 ### Barrinha no formulário
 
@@ -86,6 +94,13 @@ O Windows cria um atalho que abre direto aquele serviço.
 
 ## 3. Como o link é descoberto
 
+**Resumo para explicar a alguém:**
+
+> O link não foi inventado: é o mesmo endereço que o próprio CSC monta quando você dá duplo clique
+> num serviço da árvore. O CSC abre o formulário numa janelinha dentro da página, por isso o endereço
+> não aparece na barra do navegador. Essa janelinha tem um endereço próprio, que é sempre o mesmo
+> e só muda o número do serviço. A extensão descobre esse número e monta o mesmo endereço que o CSC montaria.
+
 ### 3.1 Por que o endereço "não muda" no CSC
 
 O CSC usa o sistema **GestaoX** (da EMX), feito em ASP.NET WebForms com componentes Telerik.
@@ -109,7 +124,9 @@ Cada item da árvore guarda um valor escondido, por exemplo:
 - O **1º número (`6548`)** é o **ID do serviço** no catálogo.
 - O **2º campo (`S` ou `N`)** diz se é um serviço final (`S`) ou uma pasta (`N`).
 
-No duplo clique, o próprio código do site faz isto (resumido):
+No duplo clique, o próprio código do site faz isto. É o JavaScript que o CSC manda para o navegador
+na página `IncidenteV2.aspx` (a tela da árvore); ele apareceu na gravação do Gravador de Ações (seção 7).
+Resumido:
 
 ```js
 function rdTreeview_DoubleClick() {
@@ -118,8 +135,11 @@ function rdTreeview_DoubleClick() {
 }
 
 function AbreTela(id) {
+  var width  = screen.width  * 0.85;          // 1920 × 0,85 = 1632
+  var height = screen.height * 0.70;          // 1080 × 0,70 = 756
   janelaInterna.setUrl("../Chamados/viewIncidenteDireto.aspx?id=" + id +
-                       "&origem=" + origem + "&width=..." + "&height=..." +
+                       "&origem=" + origem +
+                       "&width=" + width + "&height=" + height +
                        "&incidenteid=0&Userid=" + Userid);
   janelaInterna.show();
 }
@@ -131,13 +151,25 @@ Ou seja, o formulário de cada serviço é só esta página com o ID no final:
 https://csc.pucminas.br/Chamados/viewIncidenteDireto.aspx?id=ID_DO_SERVIÇO&origem=Incidente&width=1632&height=756&incidenteid=0&Userid=0
 ```
 
+Exemplo com o serviço **Suporte ao Canvas**
+(`CSC - Central de Serviços Compartilhados / Serviços de TI / Rede Acadêmica / Acesso Canvas`), ID `4952`:
+
+```
+https://csc.pucminas.br/Chamados/viewIncidenteDireto.aspx?id=4952&origem=Incidente&width=1632&height=756&incidenteid=0&Userid=0
+```
+
+O ID pode vir de dois lugares:
+
+- **da árvore:** o 1º número do valor escondido do item (`6548;S;...`);
+- **de um chamado já existente:** o campo escondido `hidCatalogoServicosId`, junto com o caminho em `hidDesc` (seção 3.5).
+
 ### 3.3 O que significa cada parte do link
 
 | Parâmetro | Exemplo | Significado |
 |---|---|---|
 | `id` | `6548` | ID do serviço (o número que vem da árvore). **Tem que ser número.** |
 | `origem` | `Incidente` | `Incidente` = abrir como **solicitante** (botão "Abertura de chamado"). `ChamadosGrupo` = abrir como **atendente** (botão "Abertura de chamado atendente"). |
-| `width` / `height` | `1632` / `756` | Tamanho da janela interna. Valores fixos, não mudam o serviço. |
+| `width` / `height` | `1632` / `756` | Tamanho da janela interna: o CSC calcula 85% da largura e 70% da altura da tela (numa tela 1920×1080, dá 1632×756). Não mudam o serviço; qualquer valor funciona. |
 | `incidenteid` | `0` | `0` = chamado **novo**. Outro número seria um chamado já existente. |
 | `Userid` | `0` | Usuário escolhido na abertura como atendente. `0` = nenhum. |
 
@@ -162,7 +194,26 @@ ficam guardados em objetos JavaScript da própria página.
    com `no.get_element()`). Se for um serviço, ele bloqueia o menu normal e o `arvore.js` mostra o menu
    **Copiar link do serviço / Abrir em nova aba**, montando o link com o formato da seção 3.2.
 
-### 3.5 E as listas de chamados (Todos, Pendentes...)?
+### 3.5 Como a extensão aprende com um chamado que já existe
+
+Ao clicar num chamado das listas, o CSC abre numa janela interna a página
+`viewHistoricoChamado.aspx?id=...&Codigo=1028224&origem=VisualizaChamadosGrupo`.
+O cabeçalho mostra só o caminho em texto, mas a página traz em campos escondidos:
+
+| Campo | Exemplo | Significado |
+|---|---|---|
+| `hidCatalogoServicosId` (e `hidServicoID`) | `4952` | ID do serviço: **o mesmo número** do 1º campo dos itens da árvore |
+| `hidDesc` | `CSC - Central de Serviços Compartilhados/Serviços de TI/Rede Acadêmica/Acesso Canvas/Suporte ao Canvas` | Caminho completo do serviço |
+| `hidTipoItem` | `S` | Serviço final (o mesmo `S` do 2º campo dos itens da árvore) |
+
+Os outros campos batem com o resto do valor da árvore (`hidGrupoSolucionadorChamado` = grupo,
+`hidEmpresaid` = empresa), o que confirma que o ID é o do catálogo.
+
+O `chamado.js` lê **só esses três campos** e põe o serviço no catálogo de **solicitante**
+(o link usa `origem=Incidente`). Não lê o conteúdo do chamado (descrição, solicitante, anexos)
+e não faz requisição nenhuma. Se a árvore já tiver ensinado o mesmo serviço, o que veio da árvore é mantido.
+
+### 3.6 E as listas de chamados (Todos, Pendentes...)?
 
 Essas páginas **têm endereço próprio** e carregam a lista sozinhas ao abrir.
 O site clica automaticamente num botão escondido (`btnLoadGrid`) logo depois que a página carrega:
@@ -178,12 +229,29 @@ O site clica automaticamente num botão escondido (`btnLoadGrid`) logo depois qu
 O sistema guarda os filtros na sua conta quando você clica em **Salvar** na tela da lista,
 e o link abre a lista com esses filtros salvos.
 
-### 3.6 Serviço x grupo (fila)
+### 3.7 Serviço x grupo (fila)
 
 O link direto é de um **serviço** (um item da árvore). Cada serviço é atendido por um **grupo/fila**
 (ex.: `RES_NED/CEAD_Gestão_do_Ambiente_Virtual`). Para ter o link "da fila", pegue o link do serviço
 que cai nessa fila. A árvore não informa o grupo, então **a busca não encontra pelo nome do grupo**,
 só pelo nome ou caminho do serviço.
+
+### 3.8 Perguntas que podem fazer
+
+**"Isso é burlar o sistema?"**
+Não. É o mesmo endereço que o CSC usa quando você dá duplo clique no serviço. A pessoa precisa estar
+logada, só consegue abrir o que já teria acesso pela árvore, e nada é criado até ela preencher e enviar o formulário.
+
+**"Por que 1632 e 756 no link?"**
+É só o tamanho da janela que o CSC calcula a partir da tela (seção 3.3). Não tem nada a ver com o serviço.
+
+**"Por que pede login?"**
+O link abre uma página do CSC como outra qualquer. Se a sessão expirou, o CSC manda para o login;
+depois de entrar, é só clicar no link de novo.
+
+**"Pode parar de funcionar?"**
+Pode, se a EMX (empresa do GestaoX) mudar o nome da página (`viewIncidenteDireto.aspx`) ou dos parâmetros
+numa atualização do sistema. Aí é preciso descobrir o novo formato e atualizar os links.
 
 ---
 
@@ -198,7 +266,7 @@ só pelo nome ou caminho do serviço.
 Ela também ignora, de propósito:
 
 - o **"Novo chamado" genérico** (`id=0`), que não tem serviço escolhido;
-- **chamados já existentes** (`incidenteid` diferente de `0`);
+- o **conteúdo dos chamados já existentes**: deles só lê o ID e o caminho do serviço (seção 3.5);
 - qualquer outra página do CSC.
 
 ## 5. Limitações
@@ -207,7 +275,9 @@ Ela também ignora, de propósito:
   Depois de entrar, clique no link de novo.
 - Aberto numa aba sozinha, o formulário pode ficar com o visual um pouco mais simples,
   porque foi feito para aparecer como janela interna. Mas funciona.
-- A busca só conhece os serviços das pastas que você **já abriu** em algum momento.
+- A busca só conhece os serviços das pastas e dos chamados que você **já abriu** em algum momento.
+- O serviço aprendido de um chamado entra como **solicitante**. Se ele só existir na árvore de atendente,
+  abra a pasta dele na árvore de atendente para ter também o link de atendente.
 - Os serviços de **solicitante** e de **atendente** ficam separados, porque o CSC mostra árvores diferentes.
   O link de atendente só funciona para quem tem acesso a abrir chamados como atendente.
 - Se a EMX mudar o sistema (nome da página, dos parâmetros ou da árvore), a extensão pode parar de funcionar.
@@ -222,6 +292,7 @@ Ela também ignora, de propósito:
 | `content.js` | No formulário de um serviço: lê o ID e o nome, salva o link e mostra a barrinha. |
 | `arvore-main.js` | No ambiente da página: lê os serviços já carregados na árvore e detecta o botão direito em um serviço. |
 | `arvore.js` | Junta os serviços no catálogo do Chrome e mostra o menu do botão direito. |
+| `chamado.js` | Num chamado já existente: lê o ID e o caminho do serviço (campos escondidos) e põe no catálogo. |
 | `popup.html` / `popup.js` | A janelinha que abre ao clicar no ícone: busca, listas, abrir, copiar, salvar, renomear, remover. |
 
 ## 7. Como isso foi descoberto
@@ -232,4 +303,6 @@ as requisições escondidas (com respostas) e o HTML das páginas. Analisando es
 - as respostas da árvore, com o valor de cada item (`6548;S;S;S;...`);
 - a função `rdTreeview_DoubleClick` → `AbreTela`, que monta o endereço `viewIncidenteDireto.aspx?id=...`;
 - o script das listas que clica sozinho no `btnLoadGrid`;
-- a configuração da árvore (`nodeData`), que mostra quais pastas já vêm carregadas.
+- a configuração da árvore (`nodeData`), que mostra quais pastas já vêm carregadas;
+- na tela de um chamado existente, os campos escondidos `hidCatalogoServicosId` e `hidDesc`,
+  com o ID e o caminho do serviço.
